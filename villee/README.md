@@ -1,17 +1,18 @@
 # villee
 
-A new Flutter project.
+位置情報共有アプリ
+flutter学習用モバイルアプリ開発
 
-## Getting Started
+## 概要
 
-This project is a starting point for a Flutter application.
+友人を追加して位置情報を共有しよう！
+共有のオン・オフも可能！
 
-A few resources to get you started if this is your first Flutter project:
+## 機能
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- メール・パスワードでのアカウント作成
+- ログイン・ログアウト
+- myプロフィール
+- 友達追加
+- 自分や友達の位置がマップ上にアイコンで表示
+- アカウントの削除
