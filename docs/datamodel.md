@@ -6,7 +6,6 @@ users/{userId}
     "displayName":"ユーザー名",
     "publicId": "taro_123",
     "profileText": "自己紹介",
-    "photoUrl": "https://...",
     "sharingEnabled": true,
     "createdAt": "Timestamp",
     "updatedAt": "Timestamp"
