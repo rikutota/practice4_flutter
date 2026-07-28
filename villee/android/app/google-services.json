@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "673651359680",
+    "project_id": "practice4-flutter",
+    "storage_bucket": "practice4-flutter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673651359680:android:05690a9159900b82399225",
+        "android_client_info": {
+          "package_name": "io.github.rikutota.villee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfRe4pOQ_6isO5ntJbuEzWj6FQ7Kfehvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
