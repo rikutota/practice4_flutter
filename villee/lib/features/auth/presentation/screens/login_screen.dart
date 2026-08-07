@@ -96,16 +96,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: authState.isLoading
                         ? null
                         : () {
-                          context.push('/sign-up');
-                        },
+                            context.push('/sign-up');
+                          },
                     child: const Text('アカウントを作成'),
                   ),
                   TextButton(
                     onPressed: authState.isLoading
                         ? null
                         : () {
-                          context.push('/password-reset');
-                        },
+                            context.push('/password-reset');
+                          },
                     child: const Text('パスワードを忘れた場合'),
                   ),
                 ],

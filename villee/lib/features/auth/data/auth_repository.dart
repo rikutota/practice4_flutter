@@ -11,10 +11,7 @@ class AuthRepository {
   }
 
   /// メールアドレスとパスワードで新規登録する。
-  Future<void> signUp({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signUp({required String email, required String password}) async {
     await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -22,10 +19,7 @@ class AuthRepository {
   }
 
   /// メールアドレスとパスワードでログインする。
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
@@ -33,12 +27,8 @@ class AuthRepository {
   }
 
   /// パスワード再設定メールを送信する。
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) async {
-    await _firebaseAuth.sendPasswordResetEmail(
-      email: email,
-    );
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 
   /// 現在のユーザーをログアウトさせる。
