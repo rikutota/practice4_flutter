@@ -14,51 +14,39 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(firebaseAuth);
 });
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, void>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, void>(
+  AuthController.new,
+);
 
 class AuthController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() async {}
 
-  Future<bool> signUp({
-    required String email,
-    required String password,
-  }) {
+  Future<bool> signUp({required String email, required String password}) {
     return _execute(
-      () => ref.read(authRepositoryProvider).signUp(
-            email: email,
-            password: password,
-          ),
+      () => ref
+          .read(authRepositoryProvider)
+          .signUp(email: email, password: password),
     );
   }
 
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) {
+  Future<bool> signIn({required String email, required String password}) {
     return _execute(
-      () => ref.read(authRepositoryProvider).signIn(
-            email: email,
-            password: password,
-          ),
+      () => ref
+          .read(authRepositoryProvider)
+          .signIn(email: email, password: password),
     );
   }
 
-  Future<bool> sendPasswordResetEmail({
-    required String email,
-  }) {
+  Future<bool> sendPasswordResetEmail({required String email}) {
     return _execute(
-      () => ref.read(authRepositoryProvider).sendPasswordResetEmail(
-            email: email,
-          ),
+      () =>
+          ref.read(authRepositoryProvider).sendPasswordResetEmail(email: email),
     );
   }
 
   Future<bool> signOut() {
-    return _execute(
-      () => ref.read(authRepositoryProvider).signOut(),
-    );
+    return _execute(() => ref.read(authRepositoryProvider).signOut());
   }
 
   Future<bool> _execute(Future<void> Function() operation) async {

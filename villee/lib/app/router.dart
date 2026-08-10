@@ -11,6 +11,8 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/password_reset_screen.dart';
 import '../features/auth/presentation/screens/sign_up_screen.dart';
 import '../features/home/presentation/home_screen.dart';
+import '../features/profile/domain/user_profile.dart';
+import '../features/profile/presentation/screens/profile_edit_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
@@ -61,6 +63,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PasswordResetScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/profile/edit',
+
+        // extraがない状態で直接アクセスされた場合はホームへ戻す。
+        redirect: (context, state) {
+          return state.extra is UserProfile ? null : '/home';
+        },
+
+        builder: (context, state) {
+          return ProfileEditScreen(profile: state.extra! as UserProfile);
+        },
+      ),
     ],
   );
 

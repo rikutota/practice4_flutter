@@ -1,0 +1,110 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function validPublicId(publicId) {
+      return publicId is string
+        && publicId.size() >= 3
+        && publicId.size() <= 20
+        && publicId.matches('^[a-z0-9_]+$');
+    }
+
+    function validProfile(data) {
+      return data.keys().hasAll([
+          'displayName',
+          'publicId',
+          'profileText',
+          'sharingEnabled',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'displayName',
+          'publicId',
+          'profileText',
+          'sharingEnabled',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 30
+        && validPublicId(data.publicId)
+        && data.profileText is string
+        && data.profileText.size() <= 200
+        && data.sharingEnabled is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      // 友達検索で使用するため、ログインユーザーはプロフィールを読める。
+      // メールアドレスなどの非公開情報はこのドキュメントに保存しない。
+      allow read: if signedIn();
+
+      // 自分のプロフィールだけ作成可能。
+      // 同じTransaction内で対応するpublic_idsが作られることも確認する。
+      allow create: if isOwner(userId)
+        && validProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && getAfter(
+          /databases/$(database)/documents/public_ids/$(request.resource.data.publicId)
+        ).data.userId == userId;
+
+      // MVPでは表示名・自己紹介・更新日時だけ変更可能。
+      allow update: if isOwner(userId)
+        && validProfile(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName',
+          'profileText',
+          'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time;
+
+      // アカウント削除フェーズで改めて設計する。
+      allow delete: if false;
+    }
+
+    match /public_ids/{publicId} {
+      allow read: if signedIn();
+
+      // 公開IDは本人だけが予約できる。
+      // 同じTransaction内でusersドキュメントが作成されることも確認する。
+      allow create: if signedIn()
+        && validPublicId(publicId)
+        && request.resource.data.keys().hasAll([
+          'userId',
+          'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && !exists(
+          /databases/$(database)/documents/public_ids/$(publicId)
+        )
+        && getAfter(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.publicId == publicId;
+
+      // 公開IDはMVPでは変更・削除不可。
+      allow update, delete: if false;
+    }
+
+    // 明示的に許可していないコレクションはすべて拒否する。
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
