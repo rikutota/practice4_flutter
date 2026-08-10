@@ -24,10 +24,12 @@ import '../features/profile/domain/user_profile.dart';
 import '../features/profile/presentation/screens/profile_edit_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 
+import '../features/settings/presentation/account_delete_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
+
   final authNotifier = AuthStateNotifier(authRepository);
 
   ref.onDispose(authNotifier.dispose);
@@ -36,7 +38,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     refreshListenable: authNotifier,
 
-    // 認証状態に応じてアクセス先を制御する。
     redirect: (context, state) {
       final path = state.matchedLocation;
 
@@ -94,7 +95,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // ログイン後にプロフィール作成済みか確認する。
       GoRoute(
         path: '/home',
         builder: (context, state) {
@@ -102,13 +102,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // プロフィール・マップ・設定の3タブ。
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          // プロフィール
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -140,7 +138,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // マップ
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -152,7 +149,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // 設定
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -160,13 +156,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) {
                   return const SettingsScreen();
                 },
+                routes: [
+                  GoRoute(
+                    path: 'account-delete',
+                    builder: (context, state) {
+                      return const AccountDeleteScreen();
+                    },
+                  ),
+                ],
               ),
             ],
           ),
         ],
       ),
 
-      // プロフィール編集
       GoRoute(
         path: '/profile/edit',
         redirect: (context, state) {
@@ -190,17 +193,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   return router;
 });
 
-/// Firebase Authenticationの状態変化をGoRouterへ通知する。
 class AuthStateNotifier extends ChangeNotifier {
   AuthStateNotifier(AuthRepository authRepository) {
     _subscription = authRepository.authStateChanges().listen((user) {
       this.user = user;
       initialized = true;
+
       notifyListeners();
     });
   }
 
   User? user;
+
   bool initialized = false;
 
   late final StreamSubscription<User?> _subscription;
@@ -208,6 +212,7 @@ class AuthStateNotifier extends ChangeNotifier {
   @override
   void dispose() {
     _subscription.cancel();
+
     super.dispose();
   }
 }

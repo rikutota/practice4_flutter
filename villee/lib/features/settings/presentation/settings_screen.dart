@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/presentation/providers/auth_providers.dart';
 import '../../location/presentation/providers/location_sharing_providers.dart';
 import '../../profile/presentation/providers/profile_providers.dart';
+import 'providers/app_info_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -15,6 +17,8 @@ class SettingsScreen extends ConsumerWidget {
     final profileState = ref.watch(currentUserProfileProvider);
 
     final sharingState = ref.watch(locationSharingControllerProvider);
+
+    final appInfoState = ref.watch(appInfoProvider);
 
     ref.listen(locationSharingControllerProvider, (previous, next) {
       next.whenOrNull(
@@ -30,8 +34,21 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('設定')),
       body: profileState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) =>
-            const Center(child: Text('設定情報の読み込みに失敗しました')),
+        error: (error, stackTrace) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('設定情報の読み込みに失敗しました'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  ref.invalidate(currentUserProfileProvider);
+                },
+                child: const Text('再試行'),
+              ),
+            ],
+          ),
+        ),
         data: (profile) {
           if (profile == null) {
             return const Center(child: Text('プロフィールが設定されていません'));
@@ -62,6 +79,25 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(),
 
               ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('バージョン'),
+                trailing: appInfoState.when(
+                  loading: () => const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  error: (error, stackTrace) => const Text('-'),
+                  data: (packageInfo) => Text(
+                    '${packageInfo.version} '
+                    '(${packageInfo.buildNumber})',
+                  ),
+                ),
+              ),
+
+              const Divider(),
+
+              ListTile(
                 leading: const Icon(Icons.logout),
                 title: const Text('ログアウト'),
                 onTap: authState.isLoading
@@ -69,6 +105,15 @@ class SettingsScreen extends ConsumerWidget {
                     : () {
                         ref.read(authControllerProvider.notifier).signOut();
                       },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: const Text('アカウントを削除'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('/settings/account-delete');
+                },
               ),
             ],
           );
