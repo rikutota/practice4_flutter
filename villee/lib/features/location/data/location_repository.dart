@@ -10,8 +10,7 @@ class LocationRepository {
   Future<LocationAccessState> getCurrentLocation({
     bool requestPermission = false,
   }) async {
-    final serviceEnabled =
-        await Geolocator.isLocationServiceEnabled();
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
       return const LocationAccessState(
@@ -21,8 +20,7 @@ class LocationRepository {
 
     var permission = await Geolocator.checkPermission();
 
-    if (permission == LocationPermission.denied &&
-        requestPermission) {
+    if (permission == LocationPermission.denied && requestPermission) {
       permission = await Geolocator.requestPermission();
     }
 
@@ -39,9 +37,7 @@ class LocationRepository {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     return LocationAccessState(
@@ -51,24 +47,17 @@ class LocationRepository {
   }
 
   /// 指定距離以上移動した場合の位置変化を監視する。
-  Stream<Position> watchPositionChanges({
-    required int distanceFilter,
-  }) {
+  Stream<Position> watchPositionChanges({required int distanceFilter}) {
     final settings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: distanceFilter,
     );
 
-    return Geolocator.getPositionStream(
-      locationSettings: settings,
-    );
+    return Geolocator.getPositionStream(locationSettings: settings);
   }
 
   /// 2地点間の距離をメートル単位で求める。
-  double distanceBetween(
-    Position first,
-    Position second,
-  ) {
+  double distanceBetween(Position first, Position second) {
     return Geolocator.distanceBetween(
       first.latitude,
       first.longitude,

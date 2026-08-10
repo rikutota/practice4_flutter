@@ -12,7 +12,8 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
+      return signedIn()
+        && request.auth.uid == userId;
     }
 
     function validPublicId(publicId) {
@@ -61,12 +62,14 @@ service cloud.firestore {
         && (
           (
             firstUserId < secondUserId
-            && pairId == firstUserId + '_' + secondUserId
+            && pairId
+              == firstUserId + '_' + secondUserId
           )
           ||
           (
             secondUserId < firstUserId
-            && pairId == secondUserId + '_' + firstUserId
+            && pairId
+              == secondUserId + '_' + firstUserId
           )
         );
     }
@@ -95,28 +98,43 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    /// 現在ログインしているユーザーと
+    /// 指定ユーザーが友達か確認する。
+    function isFriend(userId) {
+      let friendshipId =
+        request.auth.uid < userId
+          ? request.auth.uid + '_' + userId
+          : userId + '_' + request.auth.uid;
+
+      return signedIn()
+        && request.auth.uid != userId
+        && exists(
+          /databases/$(database)/documents/friendships/$(friendshipId)
+        );
+    }
+
     // ==================================================
     // users
     // ==================================================
 
     match /users/{userId} {
 
-      // ログインユーザーはプロフィールを取得できる。
       allow read: if signedIn();
 
-      // 自分のプロフィールだけ作成できる。
       allow create: if isOwner(userId)
         && validProfile(request.resource.data)
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time
+        && request.resource.data.createdAt
+          == request.time
+        && request.resource.data.updatedAt
+          == request.time
         && getAfter(
           /databases/$(database)/documents/public_ids/$(request.resource.data.publicId)
         ).data.userId == userId;
 
-      // 自分のプロフィールだけ更新できる。
       allow update: if isOwner(userId)
         && validProfile(request.resource.data)
-        && request.resource.data.diff(resource.data)
+        && request.resource.data
+          .diff(resource.data)
           .affectedKeys()
           .hasOnly([
             'displayName',
@@ -124,9 +142,9 @@ service cloud.firestore {
             'sharingEnabled',
             'updatedAt'
           ])
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt
+          == request.time;
 
-      // アカウント削除フェーズで変更する。
       allow delete: if false;
     }
 
@@ -136,10 +154,8 @@ service cloud.firestore {
 
     match /public_ids/{publicId} {
 
-      // 友達検索で利用する。
       allow read: if signedIn();
 
-      // 自分の公開IDだけ作成できる。
       allow create: if signedIn()
         && validPublicId(publicId)
         && request.resource.data.keys().hasAll([
@@ -150,8 +166,10 @@ service cloud.firestore {
           'userId',
           'createdAt'
         ])
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.createdAt == request.time
+        && request.resource.data.userId
+          == request.auth.uid
+        && request.resource.data.createdAt
+          == request.time
         && !exists(
           /databases/$(database)/documents/public_ids/$(publicId)
         )
@@ -159,7 +177,6 @@ service cloud.firestore {
           /databases/$(database)/documents/users/$(request.auth.uid)
         ).data.publicId == publicId;
 
-      // MVPでは公開IDは変更しない。
       allow update, delete: if false;
     }
 
@@ -169,24 +186,25 @@ service cloud.firestore {
 
     match /friend_requests/{requestId} {
 
-      // Transactionで申請の存在確認を行うための単体取得。
       allow get: if signedIn()
         && (
           !exists(
             /databases/$(database)/documents/friend_requests/$(requestId)
           )
-          || resource.data.senderId == request.auth.uid
-          || resource.data.receiverId == request.auth.uid
+          || resource.data.senderId
+            == request.auth.uid
+          || resource.data.receiverId
+            == request.auth.uid
         );
 
-      // 自分が関係している申請だけ一覧取得できる。
       allow list: if signedIn()
         && (
-          resource.data.senderId == request.auth.uid
-          || resource.data.receiverId == request.auth.uid
+          resource.data.senderId
+            == request.auth.uid
+          || resource.data.receiverId
+            == request.auth.uid
         );
 
-      // 友達申請作成。
       allow create: if signedIn()
         && request.resource.data.keys().hasAll([
           'senderId',
@@ -198,8 +216,10 @@ service cloud.firestore {
           'receiverId',
           'createdAt'
         ])
-        && request.resource.data.senderId == request.auth.uid
-        && request.resource.data.receiverId is string
+        && request.resource.data.senderId
+          == request.auth.uid
+        && request.resource.data.receiverId
+          is string
         && request.resource.data.senderId
           != request.resource.data.receiverId
         && validPairId(
@@ -207,7 +227,8 @@ service cloud.firestore {
           request.resource.data.senderId,
           request.resource.data.receiverId
         )
-        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdAt
+          == request.time
         && exists(
           /databases/$(database)/documents/users/$(request.resource.data.senderId)
         )
@@ -218,15 +239,14 @@ service cloud.firestore {
           /databases/$(database)/documents/friendships/$(requestId)
         );
 
-      // 申請そのものの内容は変更させない。
       allow update: if false;
 
-      // 送信者は取り消し、
-      // 受信者は拒否・承認時に削除できる。
       allow delete: if signedIn()
         && (
-          resource.data.senderId == request.auth.uid
-          || resource.data.receiverId == request.auth.uid
+          resource.data.senderId
+            == request.auth.uid
+          || resource.data.receiverId
+            == request.auth.uid
         );
     }
 
@@ -236,21 +256,19 @@ service cloud.firestore {
 
     match /friendships/{friendshipId} {
 
-      // Transactionで友達関係の存在確認を行うための単体取得。
       allow get: if signedIn()
         && (
           !exists(
             /databases/$(database)/documents/friendships/$(friendshipId)
           )
-          || request.auth.uid in resource.data.userIds
+          || request.auth.uid
+            in resource.data.userIds
         );
 
-      // userIds array-contains 自分のUID
-      // というクエリで友達一覧を取得する。
       allow list: if signedIn()
-        && request.auth.uid in resource.data.userIds;
+        && request.auth.uid
+          in resource.data.userIds;
 
-      // 申請を受け取った本人だけが友達関係を作成できる。
       allow create: if signedIn()
         && request.resource.data.keys().hasAll([
           'userIds',
@@ -260,8 +278,10 @@ service cloud.firestore {
           'userIds',
           'createdAt'
         ])
-        && request.resource.data.userIds is list
-        && request.resource.data.userIds.size() == 2
+        && request.resource.data.userIds
+          is list
+        && request.resource.data.userIds.size()
+          == 2
         && request.resource.data.userIds[0]
           != request.resource.data.userIds[1]
         && validPairId(
@@ -269,13 +289,15 @@ service cloud.firestore {
           request.resource.data.userIds[0],
           request.resource.data.userIds[1]
         )
-        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdAt
+          == request.time
         && exists(
           /databases/$(database)/documents/friend_requests/$(friendshipId)
         )
         && get(
           /databases/$(database)/documents/friend_requests/$(friendshipId)
-        ).data.receiverId == request.auth.uid
+        ).data.receiverId
+          == request.auth.uid
         && request.resource.data.userIds.hasAll([
           get(
             /databases/$(database)/documents/friend_requests/$(friendshipId)
@@ -287,9 +309,9 @@ service cloud.firestore {
 
       allow update: if false;
 
-      // 友達になっているどちらか一方が解除できる。
       allow delete: if signedIn()
-        && request.auth.uid in resource.data.userIds;
+        && request.auth.uid
+          in resource.data.userIds;
     }
 
     // ==================================================
@@ -298,25 +320,23 @@ service cloud.firestore {
 
     match /locations/{userId} {
 
-      // 現時点では自分の位置だけ取得できる。
-      //
-      // 次のマップフェーズで、
-      // 承認済みの友達からの読み取りを追加する。
-      allow get: if isOwner(userId);
+      // 自分自身、または承認済みの友達だけ取得可能。
+      allow get: if isOwner(userId)
+        || isFriend(userId);
 
-      // 他ユーザーの位置一覧取得はまだ禁止。
+      // locations全体の検索は許可しない。
       allow list: if false;
 
-      // 自分の位置だけ作成・更新できる。
-      // さらに位置共有がONであることを確認する。
+      // 自分の位置だけ作成・更新可能。
       allow create, update: if isOwner(userId)
         && validLocation(request.resource.data)
-        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedAt
+          == request.time
         && getAfter(
           /databases/$(database)/documents/users/$(userId)
         ).data.sharingEnabled == true;
 
-      // 共有OFF時に自分の位置を削除できる。
+      // 共有OFFにすると自分の位置を削除する。
       allow delete: if isOwner(userId);
     }
 
@@ -324,7 +344,6 @@ service cloud.firestore {
     // その他
     // ==================================================
 
-    // 明示的に許可していないデータへのアクセスは禁止。
     match /{document=**} {
       allow read, write: if false;
     }
