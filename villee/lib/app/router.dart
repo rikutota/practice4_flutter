@@ -68,9 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/splash',
         builder: (context, state) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         },
       ),
@@ -107,9 +105,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // プロフィール・マップ・設定の3タブ。
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return MainScaffold(
-            navigationShell: navigationShell,
-          );
+          return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
           // プロフィール
@@ -183,9 +179,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final profile = state.extra! as UserProfile;
 
-          return ProfileEditScreen(
-            profile: profile,
-          );
+          return ProfileEditScreen(profile: profile);
         },
       ),
     ],

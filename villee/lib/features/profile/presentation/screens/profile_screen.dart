@@ -12,16 +12,11 @@ class ProfileScreen extends ConsumerWidget {
     final profileState = ref.watch(currentUserProfileProvider);
 
     return profileState.when(
-      loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
 
       error: (error, stackTrace) => Scaffold(
-        appBar: AppBar(
-          title: const Text('プロフィール'),
-        ),
+        appBar: AppBar(title: const Text('プロフィール')),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -42,11 +37,7 @@ class ProfileScreen extends ConsumerWidget {
 
       data: (profile) {
         if (profile == null) {
-          return const Scaffold(
-            body: Center(
-              child: Text('プロフィールが設定されていません'),
-            ),
-          );
+          return const Scaffold(body: Center(child: Text('プロフィールが設定されていません')));
         }
 
         return Scaffold(
@@ -56,10 +47,7 @@ class ProfileScreen extends ConsumerWidget {
               IconButton(
                 tooltip: '編集',
                 onPressed: () {
-                  context.push(
-                    '/profile/edit',
-                    extra: profile,
-                  );
+                  context.push('/profile/edit', extra: profile);
                 },
                 icon: const Icon(Icons.edit),
               ),
@@ -73,10 +61,7 @@ class ProfileScreen extends ConsumerWidget {
                 const Center(
                   child: CircleAvatar(
                     radius: 48,
-                    child: Icon(
-                      Icons.person,
-                      size: 48,
-                    ),
+                    child: Icon(Icons.person, size: 48),
                   ),
                 ),
 
@@ -91,19 +76,13 @@ class ProfileScreen extends ConsumerWidget {
 
                 const SizedBox(height: 4),
 
-                Center(
-                  child: Text(
-                    '@${profile.publicId}',
-                  ),
-                ),
+                Center(child: Text('@${profile.publicId}')),
 
                 const SizedBox(height: 24),
 
                 const Text(
                   '自己紹介',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 8),
@@ -143,9 +122,7 @@ class ProfileScreen extends ConsumerWidget {
                 // 受信・送信中の友達申請を確認する。
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.mark_email_unread_outlined,
-                  ),
+                  leading: const Icon(Icons.mark_email_unread_outlined),
                   title: const Text('友達申請'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
