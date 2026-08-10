@@ -2,6 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
@@ -45,13 +46,33 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // 2つのUIDから作成したpairIdが正しいか確認する。
+    function validPairId(pairId, firstUserId, secondUserId) {
+      return firstUserId is string
+        && secondUserId is string
+        && firstUserId != secondUserId
+        && (
+          (
+            firstUserId < secondUserId
+            && pairId == firstUserId + '_' + secondUserId
+          )
+          ||
+          (
+            secondUserId < firstUserId
+            && pairId == secondUserId + '_' + firstUserId
+          )
+        );
+    }
+
+    // ==================================================
+    // users
+    // ==================================================
+
     match /users/{userId} {
-      // 友達検索で使用するため、ログインユーザーはプロフィールを読める。
-      // メールアドレスなどの非公開情報はこのドキュメントに保存しない。
+      // 友達検索でプロフィールを表示するため、
+      // ログインユーザーはプロフィールを取得できる。
       allow read: if signedIn();
 
-      // 自分のプロフィールだけ作成可能。
-      // 同じTransaction内で対応するpublic_idsが作られることも確認する。
       allow create: if isOwner(userId)
         && validProfile(request.resource.data)
         && request.resource.data.createdAt == request.time
@@ -60,7 +81,6 @@ service cloud.firestore {
           /databases/$(database)/documents/public_ids/$(request.resource.data.publicId)
         ).data.userId == userId;
 
-      // MVPでは表示名・自己紹介・更新日時だけ変更可能。
       allow update: if isOwner(userId)
         && validProfile(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -70,15 +90,17 @@ service cloud.firestore {
         ])
         && request.resource.data.updatedAt == request.time;
 
-      // アカウント削除フェーズで改めて設計する。
+      // アカウント削除フェーズで変更する。
       allow delete: if false;
     }
+
+    // ==================================================
+    // public_ids
+    // ==================================================
 
     match /public_ids/{publicId} {
       allow read: if signedIn();
 
-      // 公開IDは本人だけが予約できる。
-      // 同じTransaction内でusersドキュメントが作成されることも確認する。
       allow create: if signedIn()
         && validPublicId(publicId)
         && request.resource.data.keys().hasAll([
@@ -98,11 +120,152 @@ service cloud.firestore {
           /databases/$(database)/documents/users/$(request.auth.uid)
         ).data.publicId == publicId;
 
-      // 公開IDはMVPでは変更・削除不可。
+      // MVPでは公開IDを変更しない。
       allow update, delete: if false;
     }
 
-    // 明示的に許可していないコレクションはすべて拒否する。
+    // ==================================================
+    // friend_requests
+    // ==================================================
+
+    match /friend_requests/{requestId} {
+
+      // RepositoryのTransactionで、
+      // 存在確認のため単一ドキュメントをgetする場合にも対応する。
+      allow get: if signedIn()
+        && (
+          !exists(
+            /databases/$(database)/documents/friend_requests/$(requestId)
+          )
+          || resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid
+        );
+
+      // 自分が送信者または受信者の申請だけ一覧取得できる。
+      allow list: if signedIn()
+        && (
+          resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'senderId',
+          'receiverId',
+          'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'senderId',
+          'receiverId',
+          'createdAt'
+        ])
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.receiverId is string
+        && request.resource.data.senderId
+            != request.resource.data.receiverId
+        && validPairId(
+          requestId,
+          request.resource.data.senderId,
+          request.resource.data.receiverId
+        )
+        && request.resource.data.createdAt == request.time
+        && exists(
+          /databases/$(database)/documents/users/$(request.resource.data.senderId)
+        )
+        && exists(
+          /databases/$(database)/documents/users/$(request.resource.data.receiverId)
+        )
+        && !exists(
+          /databases/$(database)/documents/friendships/$(requestId)
+        );
+
+      // 申請内容そのものは変更しない。
+      allow update: if false;
+
+      // 送信者 → 取り消し
+      // 受信者 → 拒否・承認時の削除
+      allow delete: if signedIn()
+        && (
+          resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid
+        );
+    }
+
+    // ==================================================
+    // friendships
+    // ==================================================
+
+    match /friendships/{friendshipId} {
+
+      // Transaction内の存在確認と、
+      // 自分が所属する友達関係の単体取得に対応する。
+      allow get: if signedIn()
+        && (
+          !exists(
+            /databases/$(database)/documents/friendships/$(friendshipId)
+          )
+          || request.auth.uid in resource.data.userIds
+        );
+
+      // Repositoryの
+      //
+      // where(
+      //   'userIds',
+      //   arrayContains: currentUser.uid,
+      // )
+      //
+      // に対応する。
+      allow list: if signedIn()
+        && request.auth.uid in resource.data.userIds;
+
+      // 友達申請を受け取った本人だけが
+      // friendshipを作成できる。
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'userIds',
+          'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'userIds',
+          'createdAt'
+        ])
+        && request.resource.data.userIds is list
+        && request.resource.data.userIds.size() == 2
+        && request.resource.data.userIds[0]
+            != request.resource.data.userIds[1]
+        && validPairId(
+          friendshipId,
+          request.resource.data.userIds[0],
+          request.resource.data.userIds[1]
+        )
+        && request.resource.data.createdAt == request.time
+        && exists(
+          /databases/$(database)/documents/friend_requests/$(friendshipId)
+        )
+        && get(
+          /databases/$(database)/documents/friend_requests/$(friendshipId)
+        ).data.receiverId == request.auth.uid
+        && request.resource.data.userIds.hasAll([
+          get(
+            /databases/$(database)/documents/friend_requests/$(friendshipId)
+          ).data.senderId,
+          get(
+            /databases/$(database)/documents/friend_requests/$(friendshipId)
+          ).data.receiverId
+        ]);
+
+      allow update: if false;
+
+      // 友達のどちらか一方が解除できる。
+      allow delete: if signedIn()
+        && request.auth.uid in resource.data.userIds;
+    }
+
+    // ==================================================
+    // その他
+    // ==================================================
+
+    // locationsなどは後のフェーズで追加する。
     match /{document=**} {
       allow read, write: if false;
     }
