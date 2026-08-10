@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../profile/presentation/providers/profile_providers.dart';
-import '../../profile/presentation/screens/profile_screen.dart';
 import '../../profile/presentation/screens/profile_setup_screen.dart';
 
-/// ログインユーザーのプロフィール有無を判定する入口。
+/// ログイン直後のプロフィール確認を担当する画面。
 ///
-/// プロフィールがなければ初期設定、存在すれば表示画面へ切り替える。
+/// プロフィール未作成なら初期設定画面を表示し、
+/// 作成済みならメイン画面へ進める。
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -16,17 +17,10 @@ class HomeScreen extends ConsumerWidget {
     final profileState = ref.watch(currentUserProfileProvider);
 
     return profileState.when(
-      data: (profile) {
-        if (profile == null) {
-          return const ProfileSetupScreen();
-        }
-
-        return ProfileScreen(profile: profile);
-      },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
+
       error: (error, stackTrace) => Scaffold(
-        appBar: AppBar(title: const Text('エラー')),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -35,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () {
-                  // Providerを破棄してFirestoreから再取得する。
+                  // Firestoreからプロフィールを再取得する。
                   ref.invalidate(currentUserProfileProvider);
                 },
                 child: const Text('再試行'),
@@ -44,6 +38,22 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
+
+      data: (profile) {
+        if (profile == null) {
+          return const ProfileSetupScreen();
+        }
+
+        // build中に直接画面遷移するとエラーになる可能性があるため、
+        // 現在の描画が終了した後でメイン画面へ移動する。
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            context.go('/profile');
+          }
+        });
+
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      },
     );
   }
 }
