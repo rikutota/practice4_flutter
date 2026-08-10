@@ -8,20 +8,15 @@ import '../../location/presentation/providers/location_sharing_providers.dart';
 import '../../profile/presentation/providers/profile_providers.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
-  const MainScaffold({
-    required this.navigationShell,
-    super.key,
-  });
+  const MainScaffold({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  ConsumerState<MainScaffold> createState() =>
-      _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState
-    extends ConsumerState<MainScaffold>
+class _MainScaffoldState extends ConsumerState<MainScaffold>
     with WidgetsBindingObserver {
   late final LocationSharingController _sharingController;
 
@@ -31,15 +26,11 @@ class _MainScaffoldState
 
     WidgetsBinding.instance.addObserver(this);
 
-    _sharingController = ref.read(
-      locationSharingControllerProvider.notifier,
-    );
+    _sharingController = ref.read(locationSharingControllerProvider.notifier);
   }
 
   @override
-  void didChangeAppLifecycleState(
-    AppLifecycleState state,
-  ) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _resumeSharingIfEnabled();
       return;
@@ -50,55 +41,41 @@ class _MainScaffoldState
   }
 
   void _resumeSharingIfEnabled() {
-    ref.read(currentUserProfileProvider).whenData(
-      (profile) {
-        if (profile?.sharingEnabled == true) {
-          unawaited(
-            _sharingController.resumeMonitoring(),
-          );
-        }
-      },
-    );
+    ref.read(currentUserProfileProvider).whenData((profile) {
+      if (profile?.sharingEnabled == true) {
+        unawaited(_sharingController.resumeMonitoring());
+      }
+    });
   }
 
   void _onDestinationSelected(int index) {
     widget.navigationShell.goBranch(
       index,
-      initialLocation:
-          index == widget.navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     // sharingEnabledが変化した場合も監視状態を合わせる。
-    ref.listen(
-      currentUserProfileProvider,
-      (previous, next) {
-        next.whenData(
-          (profile) {
-            if (profile?.sharingEnabled == true) {
-              if (WidgetsBinding.instance.lifecycleState ==
-                  AppLifecycleState.resumed) {
-                unawaited(
-                  _sharingController.resumeMonitoring(),
-                );
-              }
-            } else {
-              _sharingController.endSession();
-            }
-          },
-        );
-      },
-    );
+    ref.listen(currentUserProfileProvider, (previous, next) {
+      next.whenData((profile) {
+        if (profile?.sharingEnabled == true) {
+          if (WidgetsBinding.instance.lifecycleState ==
+              AppLifecycleState.resumed) {
+            unawaited(_sharingController.resumeMonitoring());
+          }
+        } else {
+          _sharingController.endSession();
+        }
+      });
+    });
 
     return Scaffold(
       body: widget.navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex:
-            widget.navigationShell.currentIndex,
-        onDestinationSelected:
-            _onDestinationSelected,
+        selectedIndex: widget.navigationShell.currentIndex,
+        onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.person_outline),

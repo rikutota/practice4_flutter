@@ -2,8 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 
-class LocationSharingUnauthenticatedException
-    implements Exception {
+class LocationSharingUnauthenticatedException implements Exception {
   const LocationSharingUnauthenticatedException();
 }
 
@@ -22,11 +21,9 @@ class LocationSharingRepository {
   Future<void> enableSharing(Position position) async {
     final user = _requireCurrentUser();
 
-    final userReference =
-        _firestore.collection('users').doc(user.uid);
+    final userReference = _firestore.collection('users').doc(user.uid);
 
-    final locationReference =
-        _firestore.collection('locations').doc(user.uid);
+    final locationReference = _firestore.collection('locations').doc(user.uid);
 
     final batch = _firestore.batch();
     final timestamp = FieldValue.serverTimestamp();
@@ -62,11 +59,9 @@ class LocationSharingRepository {
   Future<void> disableSharing() async {
     final user = _requireCurrentUser();
 
-    final userReference =
-        _firestore.collection('users').doc(user.uid);
+    final userReference = _firestore.collection('users').doc(user.uid);
 
-    final locationReference =
-        _firestore.collection('locations').doc(user.uid);
+    final locationReference = _firestore.collection('locations').doc(user.uid);
 
     final batch = _firestore.batch();
 
