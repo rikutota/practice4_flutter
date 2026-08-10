@@ -1,33 +1,104 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// アプリの主要3画面を切り替える共通レイアウト。
-///
-/// StatefulNavigationShellが各タブのNavigatorを管理するため、
-/// タブを切り替えても各画面の状態を保持できる。
-class MainScaffold extends StatelessWidget {
-  const MainScaffold({required this.navigationShell, super.key});
+import '../../location/presentation/providers/location_sharing_providers.dart';
+import '../../profile/presentation/providers/profile_providers.dart';
+
+class MainScaffold extends ConsumerStatefulWidget {
+  const MainScaffold({
+    required this.navigationShell,
+    super.key,
+  });
 
   final StatefulNavigationShell navigationShell;
 
-  /// ボトムナビゲーションで選択されたタブへ切り替える。
-  void _onDestinationSelected(int index) {
-    navigationShell.goBranch(
-      index,
+  @override
+  ConsumerState<MainScaffold> createState() =>
+      _MainScaffoldState();
+}
 
-      // 現在選択中のタブをもう一度押した場合は、
-      // そのタブの最初の画面へ戻す。
-      initialLocation: index == navigationShell.currentIndex,
+class _MainScaffoldState
+    extends ConsumerState<MainScaffold>
+    with WidgetsBindingObserver {
+  late final LocationSharingController _sharingController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
+
+    _sharingController = ref.read(
+      locationSharingControllerProvider.notifier,
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(
+    AppLifecycleState state,
+  ) {
+    if (state == AppLifecycleState.resumed) {
+      _resumeSharingIfEnabled();
+      return;
+    }
+
+    // バックグラウンドでは位置更新を停止する。
+    _sharingController.pauseMonitoring();
+  }
+
+  void _resumeSharingIfEnabled() {
+    ref.read(currentUserProfileProvider).whenData(
+      (profile) {
+        if (profile?.sharingEnabled == true) {
+          unawaited(
+            _sharingController.resumeMonitoring(),
+          );
+        }
+      },
+    );
+  }
+
+  void _onDestinationSelected(int index) {
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation:
+          index == widget.navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // sharingEnabledが変化した場合も監視状態を合わせる。
+    ref.listen(
+      currentUserProfileProvider,
+      (previous, next) {
+        next.whenData(
+          (profile) {
+            if (profile?.sharingEnabled == true) {
+              if (WidgetsBinding.instance.lifecycleState ==
+                  AppLifecycleState.resumed) {
+                unawaited(
+                  _sharingController.resumeMonitoring(),
+                );
+              }
+            } else {
+              _sharingController.endSession();
+            }
+          },
+        );
+      },
+    );
+
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _onDestinationSelected,
+        selectedIndex:
+            widget.navigationShell.currentIndex,
+        onDestinationSelected:
+            _onDestinationSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -47,5 +118,15 @@ class MainScaffold extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
+    // ログアウトなどでメイン画面自体が破棄された場合にも停止する。
+    _sharingController.endSession();
+
+    super.dispose();
   }
 }

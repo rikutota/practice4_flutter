@@ -2,18 +2,16 @@ import 'package:geolocator/geolocator.dart';
 
 import '../domain/location_access_state.dart';
 
-/// geolocatorを利用した位置情報アクセスを担当する。
+/// 端末の位置情報機能へのアクセスを担当する。
 class LocationRepository {
   const LocationRepository();
 
-  /// 現在の位置情報利用状態を確認する。
-  ///
-  /// [requestPermission]がtrueの場合、
-  /// 未許可ならAndroidの権限ダイアログを表示する。
+  /// 現在位置を取得する。
   Future<LocationAccessState> getCurrentLocation({
     bool requestPermission = false,
   }) async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final serviceEnabled =
+        await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
       return const LocationAccessState(
@@ -23,7 +21,8 @@ class LocationRepository {
 
     var permission = await Geolocator.checkPermission();
 
-    if (permission == LocationPermission.denied && requestPermission) {
+    if (permission == LocationPermission.denied &&
+        requestPermission) {
       permission = await Geolocator.requestPermission();
     }
 
@@ -39,12 +38,10 @@ class LocationRepository {
       );
     }
 
-    final locationSettings = const LocationSettings(
-      accuracy: LocationAccuracy.high,
-    );
-
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: locationSettings,
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+      ),
     );
 
     return LocationAccessState(
@@ -53,12 +50,37 @@ class LocationRepository {
     );
   }
 
-  /// Villeeのアプリ設定画面を開く。
+  /// 指定距離以上移動した場合の位置変化を監視する。
+  Stream<Position> watchPositionChanges({
+    required int distanceFilter,
+  }) {
+    final settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: distanceFilter,
+    );
+
+    return Geolocator.getPositionStream(
+      locationSettings: settings,
+    );
+  }
+
+  /// 2地点間の距離をメートル単位で求める。
+  double distanceBetween(
+    Position first,
+    Position second,
+  ) {
+    return Geolocator.distanceBetween(
+      first.latitude,
+      first.longitude,
+      second.latitude,
+      second.longitude,
+    );
+  }
+
   Future<void> openAppSettings() async {
     await Geolocator.openAppSettings();
   }
 
-  /// Androidの位置情報設定画面を開く。
   Future<void> openLocationSettings() async {
     await Geolocator.openLocationSettings();
   }
